@@ -1,0 +1,21 @@
+{
+  "name": "kigc_bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "localhost"
+  },
+  "author": "Cupelt",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.16.1",
+    "discordx": "^11.12.1",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.5.4"
+  }
+}
