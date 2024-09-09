@@ -14,8 +14,12 @@ export class BotInitializer {
             const channel = guild.channels.cache.find(c => c.id == channelId);
 
             if (channel instanceof ForumChannel) {
-                const threads = channel.threads.cache;
-                threads.forEach(thread => thread.send("test").then(m => m.id))
+                const forumChannels = channel.threads.cache;
+                for (const thread of forumChannels) {
+                    
+                }
+
+                forumChannels.forEach(async thread => console.log((await thread.messages.fetchPinned()).values().next()))
             }
 
 
