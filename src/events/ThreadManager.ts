@@ -1,3 +1,4 @@
+import { Interaction } from "discord.js";
 import { Discord, On, Once } from "discordx";
 @Discord()
 export class ThreadManager {
@@ -9,6 +10,16 @@ export class ThreadManager {
         const owner = await event.fetchOwner()
             .then( tc => tc?.guildMember )
         console.log(owner);
+    }
+
+    @On({ event: "interactionCreate" })
+    private async menuInteraction(
+        interaction: Interaction,
+        client: DiscordX.Client
+    ) {
+        if (!interaction.isAnySelectMenu()) {
+            return;
+        }
         
     }
 }
