@@ -7,10 +7,6 @@ import {
 } from "discord.js";
 import { Discord, On, Once } from "discordx";
 
-const rateSelect = [
-    { label: "⭐️", value: "1" },
-    { label: "⭐️⭐️", value: "2" },
-];
 @Discord()
 export class BotInitializer {
     @Once({ event: "ready" })
@@ -39,20 +35,17 @@ export class BotInitializer {
                 if (msgResult.done || msgResult.value.author.id != client.user?.id) return;
                 const msg = msgResult.value;
 
-                const rateSelComp = new StringSelectMenuBuilder()
-                    .addOptions(rateSelect)
-                    .setCustomId("test");
+                const users = await Promise.all(t.members.cache.map(m => ({ label : `@${m.user?.tag}`, value: m.id })));
+                console.log(users);
 
                 const userSelComp = new UserSelectMenuBuilder()
                     .setCustomId("user")
                     .setPlaceholder("체택할 답변자")
-                    .setMaxValues(1);
+                    .setMinValues(1)
+                    .setMaxValues(3);
 
                 msg.edit({
                     components: [
-                        new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-                            rateSelComp,
-                        ),
                         new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
                             userSelComp,
                         ),

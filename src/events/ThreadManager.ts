@@ -1,4 +1,4 @@
-import { Interaction } from "discord.js";
+import { ForumChannel, Interaction, ThreadChannel } from "discord.js";
 import { Discord, On, Once } from "discordx";
 @Discord()
 export class ThreadManager {
@@ -9,9 +9,17 @@ export class ThreadManager {
     }
 
     @On({ event: "interactionCreate" })
-    private async menuInteraction(interaction: Interaction, client: DiscordX.Client) {
-        if (!interaction.isAnySelectMenu()) {
+    private async menuInteraction([interaction]: DiscordX.ArgsOf<"interactionCreate">, client: DiscordX.Client) {
+        if (!interaction.isStringSelectMenu() && !interaction.isUserSelectMenu()) {
             return;
         }
+
+        if (interaction.user.id != (interaction.channel as ThreadChannel).ownerId)
+            return;
+            
+
+        await interaction.deferUpdate();
+
+        console.log(interaction.values);
     }
 }
