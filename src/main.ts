@@ -1,8 +1,9 @@
-import dotenv from 'dotenv';
-import { dirname, importx } from '@discordx/importer';
-import type { Interaction, Message } from 'discord.js';
-import { IntentsBitField } from 'discord.js';
-import { Client } from 'discordx';
+import dotenv from "dotenv";
+import "reflect-metadata";
+import { dirname, importx } from "@discordx/importer";
+import { IntentsBitField } from "discord.js";
+import { Client, DIService, tsyringeDependencyRegistryEngine } from "discordx";
+import { container } from "tsyringe";
 
 dotenv.config();
 
@@ -19,10 +20,11 @@ export const client = new Client({
 });
 
 async function ready() {
+    DIService.engine = tsyringeDependencyRegistryEngine.setInjector(container);
     await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`);
 
     if (!process.env.BOT_TOKEN) {
-        throw Error('Could not find BOT_TOKEN in your environment');
+        throw Error("Could not find BOT_TOKEN in your environment");
     }
 
     await client.login(process.env.BOT_TOKEN);
