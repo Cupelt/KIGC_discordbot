@@ -3,7 +3,7 @@ import "reflect-metadata";
 import { dirname, importx } from "@discordx/importer";
 import { IntentsBitField } from "discord.js";
 import { Client, DIService, tsyringeDependencyRegistryEngine } from "discordx";
-import { container } from "tsyringe";
+import { container, instanceCachingFactory } from "tsyringe";
 
 dotenv.config();
 
@@ -20,7 +20,10 @@ export const client = new Client({
 });
 
 async function ready() {
-    DIService.engine = tsyringeDependencyRegistryEngine.setInjector(container);
+    DIService.engine = tsyringeDependencyRegistryEngine
+        .setUseTokenization(true)
+        .setCashingSingletonFactory(instanceCachingFactory)
+        .setInjector(container);
     await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`);
 
     if (!process.env.BOT_TOKEN) {
