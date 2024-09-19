@@ -6,7 +6,7 @@
     "type": "module",
     "main": "build/main.js",
     "scripts": {
-        "build": "tsc",
+        "build": "rm -rf build/* && npx tsc",
         "dev": "npm run build && npm start",
         "start": "node --experimental-loader=extensionless build/main.js",
         "watch": "nodemon --exec npm run dev --watch src --ext ts"

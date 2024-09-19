@@ -28,7 +28,6 @@ export class ThreadManager implements IInitializable {
 	public async init(): Promise<void> {
 		const configChannel = this.envManager.getConfigChannel();
 		const messages = await configChannel.messages.fetch();
-        console.log(messages.size);
 		await Promise.all(
 			messages.map(async (m) => { 
                 if (m.deletable && m.author.id !== client.user?.id) 
