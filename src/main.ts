@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import "reflect-metadata";
 import { dirname, importx } from "@discordx/importer";
-import { IntentsBitField } from "discord.js";
+import { IntentsBitField, ThreadManager } from "discord.js";
 import { Client, DIService, tsyringeDependencyRegistryEngine } from "discordx";
 import { container, instanceCachingFactory } from "tsyringe";
 
@@ -24,12 +24,11 @@ async function ready() {
         .setUseTokenization(true)
         .setCashingSingletonFactory(instanceCachingFactory)
         .setInjector(container);
-    await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`);
+    await importx(`${dirname(import.meta.url)}/{events,features}/**/*.{ts,js}`);
 
     if (!process.env.BOT_TOKEN) {
         throw Error("Could not find BOT_TOKEN in your environment");
     }
-
     await client.login(process.env.BOT_TOKEN);
 }
 

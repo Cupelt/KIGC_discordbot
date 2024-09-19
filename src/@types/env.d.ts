@@ -5,5 +5,6 @@ declare namespace NodeJS {
 
         GUILD_ID: string;
         QNA_FORUM_ID: string;
+        QNA_CONFIG_ID: string;
     }
 }
