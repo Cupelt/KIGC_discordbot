@@ -1,7 +1,10 @@
 import {
 	ActionRowBuilder,
 	BaseMessageOptions,
+	ButtonBuilder,
+	ButtonStyle,
 	EmbedBuilder,
+	ForumThreadChannel,
 	GuildMember,
 	MessageActionRowComponentBuilder,
 	ThreadChannel,
@@ -27,13 +30,15 @@ export class ThreadManager implements IInitializable {
 
 	public async init(): Promise<void> {
 		const configChannel = this.envManager.getConfigChannel();
-		const messages = await configChannel.messages.fetch();
-		await Promise.all(
-			messages.map(async (m) => { 
-                if (m.deletable && m.author.id !== client.user?.id) 
-                    await m.delete();
-            })
-		)
+		const pinned = await configChannel.messages.fetchPinned();
+
+        let initMessage = pinned.first();
+        if (!initMessage) {
+            initMessage = await configChannel.send("Initializing..");
+            initMessage.pin();
+        }
+        await initMessage.edit(this.getConfigMsg());
+		
 		const threads = this.envManager.getForumChannel().threads.cache;
 		await Promise.all(threads.map(t => this.updateThreadMessage(t)));
 	}
@@ -65,13 +70,12 @@ export class ThreadManager implements IInitializable {
 				}
 			}
 		}
-
-		msg.edit(this.getMessage(takeUppedMembers));
+		msg.edit(this.getEvalMsg(takeUppedMembers, thread.archived || false));
 	}
 
 	@On({ event: "threadCreate" })
 	private async threadCreate([event]: ArgsOf<"threadCreate">, client: Client) {
-		const msg = this.getMessage([]);
+		const msg = this.getEvalMsg([], false);
         msg.content = "t"; // mentions
         
         (await event.send(msg)).pin();
@@ -93,10 +97,10 @@ export class ThreadManager implements IInitializable {
 			(m): m is GuildMember => m !== undefined,
 		);
 
-		await interaction.update(this.getMessage(validMembers));
+		await interaction.update(this.getEvalMsg(validMembers, (interaction.channel as ThreadChannel).archived || false));
 	}
 
-	private getMessage(users: GuildMember[]): BaseMessageOptions {
+	private getEvalMsg(users: GuildMember[], archived: boolean): BaseMessageOptions {
 		const embed = new EmbedBuilder()
 			.setColor(0xffffff)
 			.setTitle("📝 질문 평가")
@@ -124,7 +128,11 @@ export class ThreadManager implements IInitializable {
 			.setDefaultUsers(users.map((u) => u.id))
 			.setMinValues(1)
 			.setMaxValues(3);
-		//const openCloseComp = new ButtonBuilder().setCustomId("qna_open_close");
+
+		const openCloseComp = new ButtonBuilder()
+            .setCustomId("qna_open_close")
+            .setLabel(archived ? "스레드 열기" : "스레드 닫기")
+            .setStyle(archived ? ButtonStyle.Primary : ButtonStyle.Success)
 
 		return {
 			embeds: [embed],
@@ -132,7 +140,14 @@ export class ThreadManager implements IInitializable {
 				new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
 					userSelComp,
 				),
+                new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+					openCloseComp,
+				),
 			],
-		} as BaseMessageOptions;
+		};
 	}
+
+    private getConfigMsg(): BaseMessageOptions {
+        return {};
+    }
 }
