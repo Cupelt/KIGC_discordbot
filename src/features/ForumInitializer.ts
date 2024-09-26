@@ -1,7 +1,9 @@
 import {
 	ActionRowBuilder,
+	APIEmbedField,
 	BaseMessageOptions,
 	ButtonBuilder,
+	ButtonInteraction,
 	ButtonStyle,
 	EmbedBuilder,
 	ForumThreadChannel,
@@ -11,7 +13,7 @@ import {
 	UserSelectMenuBuilder,
 	UserSelectMenuInteraction,
 } from "discord.js";
-import { ArgsOf, Client, Discord, On, SelectMenuComponent } from "discordx";
+import { ArgsOf, ButtonComponent, Client, Discord, On, SelectMenuComponent } from "discordx";
 import { IInitializable } from "../@types/initializable";
 import { EnvManager } from "../utils/EnvManager";
 import { injectable } from "tsyringe";
@@ -43,34 +45,35 @@ export class ThreadManager implements IInitializable {
 		await Promise.all(threads.map(t => this.updateThreadMessage(t)));
 	}
 
-	private async updateThreadMessage(thread: ThreadChannel) {
+	private async updateThreadMessage(thread: ThreadChannel, arcnived: boolean = thread.archived ?? false) {
+		const msg = (await thread.messages.fetchPinned()).first();
+		if (!msg)
+			return;
+
+		const choseMember = await this.getChoseMemberFormField(msg.embeds[0].fields.slice());
+		await msg.edit(this.getEvalMsg(choseMember, arcnived));
+	}
+
+	private async getChoseMemberFormField(embedFields: APIEmbedField[]): Promise<GuildMember[]> {
 		const guild = this.envManager.getGuild();
 
-		const msgIter = (await thread.messages.fetchPinned()).values();
-		const msgResult = msgIter.next();
-
-		if (msgResult.done || msgResult.value.author.id !== client.user?.id)
-			return;
-		const msg = msgResult.value;
-
 		const userIdExp = /<@(\d+)>/g;
-
-		const takeUppedMembers: GuildMember[] = [];
-		const fields = msg.embeds[0].fields.slice();
-		if (fields.length != 0) {
-			fields.shift();
-			for (const f of fields) {
+		const choseMembers: GuildMember[] = [];
+		if (embedFields.length != 0) {
+			embedFields.shift();
+			for (const f of embedFields) {
 				const matched = [...f.value.matchAll(userIdExp)];
 
 				for (const id of matched) {
 					await guild.members
 						.fetch(id[1]) // regex id gruop
-						.then((member) => takeUppedMembers.push(member))
+						.then((member) => choseMembers.push(member))
 						.catch(() => undefined);
 				}
 			}
 		}
-		msg.edit(this.getEvalMsg(takeUppedMembers, thread.archived || false));
+
+		return choseMembers;
 	}
 
 	@On({ event: "threadCreate" })
@@ -79,6 +82,35 @@ export class ThreadManager implements IInitializable {
         msg.content = "t"; // mentions
         
         (await event.send(msg)).pin();
+	}
+
+	@On({ event: "threadUpdate" })
+	private async threadUpdate([oldThread, newThread]: ArgsOf<"threadUpdate">, client: Client) {
+		if (oldThread.archived != newThread.archived) {
+			// tag change.
+		}
+
+		if (!newThread.archived) {
+			await this.updateThreadMessage(newThread);
+		}
+	}
+
+	@ButtonComponent({ id: "qna_close" })
+	private async openClose(interaction: ButtonInteraction) {
+		const channel = interaction.channel;
+
+		if (channel?.isThread()) {
+			const wasArchived = channel.archived ?? false;
+			const evalMsg = this.getEvalMsg(
+				await this.getChoseMemberFormField(
+					interaction.message.embeds[0].fields
+				),
+				!wasArchived
+			)
+
+			await interaction.update(evalMsg);
+			await channel.setArchived(true);
+		}
 	}
 
 	@SelectMenuComponent({ id: "qna_user_select" })
@@ -97,7 +129,7 @@ export class ThreadManager implements IInitializable {
 			(m): m is GuildMember => m !== undefined,
 		);
 
-		await interaction.update(this.getEvalMsg(validMembers, (interaction.channel as ThreadChannel).archived || false));
+		await interaction.update(this.getEvalMsg(validMembers, (interaction.channel as ThreadChannel).archived ?? false));
 	}
 
 	private getEvalMsg(users: GuildMember[], archived: boolean): BaseMessageOptions {
@@ -122,28 +154,35 @@ export class ThreadManager implements IInitializable {
 			}
 		}
 
-		const userSelComp = new UserSelectMenuBuilder()
-			.setCustomId("qna_user_select")
-			.setPlaceholder("체택할 답변자")
-			.setDefaultUsers(users.map((u) => u.id))
-			.setMinValues(1)
-			.setMaxValues(3);
+		const components = [];
+
+		if (!archived) {
+			const userSelComp = new UserSelectMenuBuilder()
+				.setCustomId("qna_user_select")
+				.setPlaceholder("체택할 답변자")
+				.setDefaultUsers(users.map((u) => u.id))
+				.setMinValues(1)
+				.setMaxValues(3);
+
+			components.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+				userSelComp,
+			),);
+		}
 
 		const openCloseComp = new ButtonBuilder()
-            .setCustomId("qna_open_close")
-            .setLabel(archived ? "스레드 열기" : "스레드 닫기")
-            .setStyle(archived ? ButtonStyle.Primary : ButtonStyle.Success)
+            .setCustomId("qna_close")
+            .setLabel(archived ? "해결됨!" : "스레드 닫기")
+            .setStyle(archived ? ButtonStyle.Success : ButtonStyle.Primary)
+			.setDisabled(archived);
+
+		components.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+			openCloseComp,
+		));
+		
 
 		return {
 			embeds: [embed],
-			components: [
-				new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-					userSelComp,
-				),
-                new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-					openCloseComp,
-				),
-			],
+			components: components
 		};
 	}
 
