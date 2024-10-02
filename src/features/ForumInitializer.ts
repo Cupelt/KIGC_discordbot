@@ -7,6 +7,7 @@ import {
 	ButtonStyle,
 	EmbedBuilder,
 	ForumThreadChannel,
+	Guild,
 	GuildMember,
 	MessageActionRowComponentBuilder,
 	ThreadChannel,
@@ -16,7 +17,7 @@ import {
 import { ArgsOf, ButtonComponent, Client, Discord, On, SelectMenuComponent } from "discordx";
 import { IInitializable } from "../@types/initializable";
 import { EnvManager } from "../utils/EnvManager";
-import { injectable } from "tsyringe";
+import { container, injectable } from "tsyringe";
 import { client } from "../main";
 import { injectRegister } from "../utils/reigister";
 
@@ -29,6 +30,7 @@ export class ThreadManager implements IInitializable {
 	constructor(envManager: EnvManager) {
 		this.envManager = envManager;
 	}
+	public priority: number = 0;
 
 	public async init(): Promise<void> {
 		const configChannel = this.envManager.getConfigChannel();
@@ -40,9 +42,10 @@ export class ThreadManager implements IInitializable {
             initMessage.pin();
         }
         await initMessage.edit(this.getConfigMsg());
-		
-		const threads = this.envManager.getForumChannel().threads.cache;
-		await Promise.all(threads.map(t => this.updateThreadMessage(t)));
+		await this.envManager.getForumChannel().threads.fetchArchived();
+
+		const fetched = await this.envManager.getForumChannel().threads.fetch();
+		await Promise.all(fetched.threads.map(t => this.updateThreadMessage(t)));
 	}
 
 	private async updateThreadMessage(thread: ThreadChannel, arcnived: boolean = thread.archived ?? false) {
@@ -50,12 +53,12 @@ export class ThreadManager implements IInitializable {
 		if (!msg)
 			return;
 
-		const choseMember = await this.getChoseMemberFormField(msg.embeds[0].fields.slice());
+		const choseMember = await ThreadManager.getChoseMemberFormField(msg.embeds[0].fields.slice());
 		await msg.edit(this.getEvalMsg(choseMember, arcnived));
 	}
 
-	private async getChoseMemberFormField(embedFields: APIEmbedField[]): Promise<GuildMember[]> {
-		const guild = this.envManager.getGuild();
+	public static async getChoseMemberFormField(embedFields: APIEmbedField[]): Promise<GuildMember[]> {
+		const guild = container.resolve(EnvManager).getGuild();
 
 		const userIdExp = /<@(\d+)>/g;
 		const choseMembers: GuildMember[] = [];
@@ -84,17 +87,6 @@ export class ThreadManager implements IInitializable {
         (await event.send(msg)).pin();
 	}
 
-	@On({ event: "threadUpdate" })
-	private async threadUpdate([oldThread, newThread]: ArgsOf<"threadUpdate">, client: Client) {
-		if (oldThread.archived != newThread.archived) {
-			// tag change.
-		}
-
-		if (!newThread.archived) {
-			await this.updateThreadMessage(newThread);
-		}
-	}
-
 	@ButtonComponent({ id: "qna_close" })
 	private async openClose(interaction: ButtonInteraction) {
 		const channel = interaction.channel;
@@ -102,13 +94,17 @@ export class ThreadManager implements IInitializable {
 		if (channel?.isThread()) {
 			const wasArchived = channel.archived ?? false;
 			const evalMsg = this.getEvalMsg(
-				await this.getChoseMemberFormField(
+				await ThreadManager.getChoseMemberFormField(
 					interaction.message.embeds[0].fields
 				),
 				!wasArchived
 			)
 
 			await interaction.update(evalMsg);
+			await channel.setLocked(true);
+
+			// TODO: set solved tag
+
 			await channel.setArchived(true);
 		}
 	}

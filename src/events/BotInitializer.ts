@@ -14,7 +14,8 @@ export class BotInitializer {
 		await Promise.all(
 			(
 				container.resolveAll("IInitializable" as Identifier) as IInitializable[]
-			).map((i) => i.init()),
+			).sort((a, b) => a.priority - b.priority)
+			.map((i) => i.init()),
 		);
 
 		console.timeEnd("Initializing BotInitalizer...");
