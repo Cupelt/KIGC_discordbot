@@ -6,9 +6,3 @@ interface QNAResult {
     acceptedUesr: Snowflake;
     assistent: Snowflake[];
 }
-
-interface UserData {
-    userScore: number;
-    
-    recentAnswersId: string[]
-}
