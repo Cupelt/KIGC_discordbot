@@ -6,6 +6,7 @@ import { EnvManager } from "../../utils/EnvManager";
 import { Collection, Message, Snowflake } from "discord.js";
 import { ThreadManager } from "../ForumInitializer";
 import { UserData } from "./UserData";
+import { client } from "../../main";
 
 @singleton()
 @injectable()
@@ -29,39 +30,47 @@ export class UserLeaderboard implements IInitializable {
             .sorted((a, b) => a.archivedAt?.getTime()! - b.archivedAt?.getTime()!);
 
         await Promise.all(archivedThreads.map(async t => {
-            const pinned = await t.messages.fetchPinned();
-            const message = pinned.first();
-
-            if (!message || !message.embeds)
+            if (!(await UserData._EmbedCahceRegister(t))) {
                 return;
+            }
 
-            const members = await ThreadManager.getChoseMemberFormField(message.embeds[0].fields);
-            members.map((gm, i) => this.addHistory(gm.id, message));
+            const members = await ThreadManager.getChoseMemberFormField(UserData.getEmbedJsonFromThreadId(t.id)!.fields);
+            members.map((gm, i) => this.addHistory(gm.id, t.id));
         }))
+
+        console.log(await Promise.all(
+            this.userLeaderboard.map(async id => {
+                const user = await client.users.fetch(id);
+                const username = user?.username; // 유효한 사용자인지 확인
+                const score = await this.userData.get(id)?.getScore(); // getScore 결과 얻기
+                return { username, score }; // 값을 명확히 반환
+            })
+        ));
     }
 
-    public addHistory(id: Snowflake, message: Message) {
+    public async addHistory(id: Snowflake, threadId: string) {
         if (!this.userData.has(id)) {
             this.userData.set(id, UserData.createInstance(id))
+            this.userLeaderboard.push(id);
         }
 
         const data = this.userData.get(id)!;
-        data.addHistory(message);
+        await data.addHistory(threadId);
         this.updateLeaderboard(id);
     }
 
-    public updateLeaderboard(id: Snowflake) {
+    public async updateLeaderboard(id: Snowflake) {
         let userIndex = this.userLeaderboard.indexOf(id);
         if (userIndex < 0)
             return;
     
-        let userScore = this.userData.get(id)?.getScore();
+        let userScore = await this.userData.get(id)?.getScore();
         if (userScore === undefined || userScore === null) 
             return;
     
         while (userIndex > 0) {
             const aboveUserId = this.userLeaderboard[userIndex - 1];
-            const aboveUserScore = this.userData.get(aboveUserId)?.getScore();
+            const aboveUserScore = await this.userData.get(aboveUserId)?.getScore();
     
             if (aboveUserScore === undefined || userScore <= aboveUserScore) 
                 break;

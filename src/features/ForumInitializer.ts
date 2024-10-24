@@ -58,13 +58,14 @@ export class ThreadManager implements IInitializable {
 	}
 
 	public static async getChoseMemberFormField(embedFields: APIEmbedField[]): Promise<GuildMember[]> {
+        const fields = [...embedFields];
 		const guild = container.resolve(EnvManager).getGuild();
 
 		const userIdExp = /<@(\d+)>/g;
 		const choseMembers: GuildMember[] = [];
-		if (embedFields.length != 0) {
-			embedFields.shift();
-			for (const f of embedFields) {
+		if (fields.length != 0) {
+			fields.shift();
+			for (const f of fields) {
 				const matched = [...f.value.matchAll(userIdExp)];
 
 				for (const id of matched) {
