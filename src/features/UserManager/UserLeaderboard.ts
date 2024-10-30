@@ -4,7 +4,7 @@ import { injectable, singleton } from "tsyringe";
 import { injectRegister } from "../../utils/reigister";
 import { EnvManager } from "../../utils/EnvManager";
 import { Collection, Message, Snowflake } from "discord.js";
-import { ThreadManager } from "../ForumInitializer";
+import { ForumManager } from "../ForumManager";
 import { UserData } from "./UserData";
 import { client } from "../../main";
 
@@ -34,7 +34,7 @@ export class UserLeaderboard implements IInitializable {
                 return;
             }
 
-            const members = await ThreadManager.getChoseMemberFormField(UserData.getEmbedJsonFromThreadId(t.id)!.fields);
+            const members = await ForumManager.getChoseMemberFormField(UserData.getEmbedJsonFromThreadId(t.id)!.fields);
             members.map((gm, i) => this.addHistory(gm.id, t.id));
         }))
 

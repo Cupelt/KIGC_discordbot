@@ -18,17 +18,20 @@ import { ArgsOf, ButtonComponent, Client, Discord, On, SelectMenuComponent } fro
 import { IInitializable } from "../@types/initializable";
 import { EnvManager } from "../utils/EnvManager";
 import { container, injectable } from "tsyringe";
-import { client } from "../main";
 import { injectRegister } from "../utils/reigister";
 
 @Discord()
 @injectable()
 @injectRegister("IInitializable")
-export class ThreadManager implements IInitializable {
+export class ForumManager implements IInitializable {
 	private envManager: EnvManager;
+
+    // <tagId, roleId>
+    private roleMap: Map<string, string>;
 
 	constructor(envManager: EnvManager) {
 		this.envManager = envManager;
+        this.roleMap = new Map();
 	}
 	public priority: number = 0;
 
@@ -41,6 +44,7 @@ export class ThreadManager implements IInitializable {
             initMessage = await configChannel.send("Initializing..");
             initMessage.pin();
         }
+
         await initMessage.edit(this.getConfigMsg());
 		await this.envManager.getForumChannel().threads.fetchArchived();
 
@@ -53,7 +57,7 @@ export class ThreadManager implements IInitializable {
 		if (!msg)
 			return;
 
-		const choseMember = await ThreadManager.getChoseMemberFormField(msg.embeds[0].fields.slice());
+		const choseMember = await ForumManager.getChoseMemberFormField(msg.embeds[0].fields.slice());
 		await msg.edit(this.getEvalMsg(choseMember, arcnived));
 	}
 
@@ -95,7 +99,7 @@ export class ThreadManager implements IInitializable {
 		if (channel?.isThread()) {
 			const wasArchived = channel.archived ?? false;
 			const evalMsg = this.getEvalMsg(
-				await ThreadManager.getChoseMemberFormField(
+				await ForumManager.getChoseMemberFormField(
 					interaction.message.embeds[0].fields
 				),
 				!wasArchived
@@ -103,8 +107,8 @@ export class ThreadManager implements IInitializable {
 
 			await interaction.update(evalMsg);
 			await channel.setLocked(true);
-
-			// TODO: set solved tag
+            // todo: 태그 연동
+			// await channel.setAppliedTags([...channel.appliedTags, "asd"])
 
 			await channel.setArchived(true);
 		}
@@ -184,6 +188,8 @@ export class ThreadManager implements IInitializable {
 	}
 
     private getConfigMsg(): BaseMessageOptions {
-        return {};
+        return {
+            content: "test"
+        };
     }
 }

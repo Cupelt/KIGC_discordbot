@@ -1,7 +1,7 @@
 import { AnyThreadChannel, Embed, ForumThreadChannel, Message, Snowflake, ThreadChannel } from "discord.js";
 import { container, injectable } from "tsyringe";
 import { EnvManager } from "../../utils/EnvManager";
-import { ThreadManager } from "../ForumInitializer";
+import { ForumManager } from "../ForumManager";
 
 @injectable()
 export class UserData {
@@ -70,7 +70,7 @@ export class UserData {
             this.historyThreadIds
                 .map(id => UserData.getEmbedJsonFromThreadId(id)!)
                 .map(async embed => {
-                    const members = await ThreadManager.getChoseMemberFormField(embed.fields);
+                    const members = await ForumManager.getChoseMemberFormField(embed.fields);
 
                     if (members[0].id == this.userId) {
                         score += 300
