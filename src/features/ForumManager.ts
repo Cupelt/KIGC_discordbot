@@ -6,15 +6,22 @@ import {
 	ButtonInteraction,
 	ButtonStyle,
 	EmbedBuilder,
-	ForumThreadChannel,
-	Guild,
 	GuildMember,
 	MessageActionRowComponentBuilder,
+	StringSelectMenuBuilder,
+	StringSelectMenuOptionBuilder,
 	ThreadChannel,
 	UserSelectMenuBuilder,
 	UserSelectMenuInteraction,
 } from "discord.js";
-import { ArgsOf, ButtonComponent, Client, Discord, On, SelectMenuComponent } from "discordx";
+import {
+	ArgsOf,
+	ButtonComponent,
+	Client,
+	Discord,
+	On,
+	SelectMenuComponent,
+} from "discordx";
 import { IInitializable } from "../@types/initializable";
 import { EnvManager } from "../utils/EnvManager";
 import { container, injectable } from "tsyringe";
@@ -26,12 +33,12 @@ import { injectRegister } from "../utils/reigister";
 export class ForumManager implements IInitializable {
 	private envManager: EnvManager;
 
-    // <tagId, roleId>
-    private roleMap: Map<string, string>;
+	// <tagId, roleId>
+	private roleMap: Map<string, string>;
 
 	constructor(envManager: EnvManager) {
 		this.envManager = envManager;
-        this.roleMap = new Map();
+		this.roleMap = new Map();
 	}
 	public priority: number = 0;
 
@@ -39,30 +46,36 @@ export class ForumManager implements IInitializable {
 		const configChannel = this.envManager.getConfigChannel();
 		const pinned = await configChannel.messages.fetchPinned();
 
-        let initMessage = pinned.first();
-        if (!initMessage) {
-            initMessage = await configChannel.send("Initializing..");
-            initMessage.pin();
-        }
+		let initMessage = pinned.first();
+		if (!initMessage) {
+			initMessage = await configChannel.send("Initializing..");
+			initMessage.pin();
+		}
 
-        await initMessage.edit(this.getConfigMsg());
+		await initMessage.edit(this.getConfigMsg());
 		await this.envManager.getForumChannel().threads.fetchArchived();
 
 		const fetched = await this.envManager.getForumChannel().threads.fetch();
-		await Promise.all(fetched.threads.map(t => this.updateThreadMessage(t)));
+		await Promise.all(fetched.threads.map((t) => this.updateThreadMessage(t)));
 	}
 
-	private async updateThreadMessage(thread: ThreadChannel, arcnived: boolean = thread.archived ?? false) {
+	private async updateThreadMessage(
+		thread: ThreadChannel,
+		arcnived: boolean = thread.archived ?? false,
+	) {
 		const msg = (await thread.messages.fetchPinned()).first();
-		if (!msg)
-			return;
+		if (!msg) return;
 
-		const choseMember = await ForumManager.getChoseMemberFormField(msg.embeds[0].fields.slice());
+		const choseMember = await ForumManager.getChoseMemberFormField(
+			msg.embeds[0].fields.slice(),
+		);
 		await msg.edit(this.getEvalMsg(choseMember, arcnived));
 	}
 
-	public static async getChoseMemberFormField(embedFields: APIEmbedField[]): Promise<GuildMember[]> {
-        const fields = [...embedFields];
+	public static async getChoseMemberFormField(
+		embedFields: APIEmbedField[],
+	): Promise<GuildMember[]> {
+		const fields = [...embedFields];
 		const guild = container.resolve(EnvManager).getGuild();
 
 		const userIdExp = /<@(\d+)>/g;
@@ -87,9 +100,9 @@ export class ForumManager implements IInitializable {
 	@On({ event: "threadCreate" })
 	private async threadCreate([event]: ArgsOf<"threadCreate">, client: Client) {
 		const msg = this.getEvalMsg([], false);
-        msg.content = "t"; // mentions
-        
-        (await event.send(msg)).pin();
+		msg.content = "t"; // mentions
+
+		(await event.send(msg)).pin();
 	}
 
 	@ButtonComponent({ id: "qna_close" })
@@ -100,14 +113,14 @@ export class ForumManager implements IInitializable {
 			const wasArchived = channel.archived ?? false;
 			const evalMsg = this.getEvalMsg(
 				await ForumManager.getChoseMemberFormField(
-					interaction.message.embeds[0].fields
+					interaction.message.embeds[0].fields,
 				),
-				!wasArchived
-			)
+				!wasArchived,
+			);
 
 			await interaction.update(evalMsg);
 			await channel.setLocked(true);
-            // todo: 태그 연동
+			// todo: 태그 연동
 			// await channel.setAppliedTags([...channel.appliedTags, "asd"])
 
 			await channel.setArchived(true);
@@ -130,10 +143,18 @@ export class ForumManager implements IInitializable {
 			(m): m is GuildMember => m !== undefined,
 		);
 
-		await interaction.update(this.getEvalMsg(validMembers, (interaction.channel as ThreadChannel).archived ?? false));
+		await interaction.update(
+			this.getEvalMsg(
+				validMembers,
+				(interaction.channel as ThreadChannel).archived ?? false,
+			),
+		);
 	}
 
-	private getEvalMsg(users: GuildMember[], archived: boolean): BaseMessageOptions {
+	private getEvalMsg(
+		users: GuildMember[],
+		archived: boolean,
+	): BaseMessageOptions {
 		const embed = new EmbedBuilder()
 			.setColor(0xffffff)
 			.setTitle("📝 질문 평가")
@@ -165,31 +186,50 @@ export class ForumManager implements IInitializable {
 				.setMinValues(1)
 				.setMaxValues(3);
 
-			components.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-				userSelComp,
-			),);
+			components.push(
+				new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+					userSelComp,
+				),
+			);
 		}
 
 		const openCloseComp = new ButtonBuilder()
-            .setCustomId("qna_close")
-            .setLabel(archived ? "해결됨!" : "스레드 닫기")
-            .setStyle(archived ? ButtonStyle.Success : ButtonStyle.Primary)
+			.setCustomId("qna_close")
+			.setLabel(archived ? "해결됨!" : "스레드 닫기")
+			.setStyle(archived ? ButtonStyle.Success : ButtonStyle.Primary)
 			.setDisabled(archived);
 
-		components.push(new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-			openCloseComp,
-		));
-		
+		components.push(
+			new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+				openCloseComp,
+			),
+		);
 
 		return {
 			embeds: [embed],
-			components: components
+			components: components,
 		};
 	}
 
-    private getConfigMsg(): BaseMessageOptions {
-        return {
-            content: "test"
-        };
-    }
+	private getConfigMsg(): BaseMessageOptions {
+		const userSelComp = new StringSelectMenuBuilder()
+			.setCustomId("set_tagmap")
+			.setPlaceholder("매치시킬 태그와 역할.")
+			.addOptions(
+				this.envManager
+					.getForumChannel()
+					.availableTags.filter((tag) => !tag.moderated)
+					.map((tag) =>
+						new StringSelectMenuOptionBuilder()
+							.setLabel(tag.name)
+							.setValue(tag.id),
+					),
+			)
+			.setMinValues(1)
+			.setMaxValues(1);
+
+		return {
+			content: "test",
+		};
+	}
 }
