@@ -8,7 +8,7 @@ import {
 } from "discord.js";
 import { container, injectable } from "tsyringe";
 import { EnvManager } from "../../utils/EnvManager";
-import { ForumManager } from "../ForumManager";
+import { ForumHandler } from "../forum/ForumHandler";
 
 @injectable()
 export class UserData {
@@ -82,7 +82,7 @@ export class UserData {
 			this.historyThreadIds
 				.map((id) => UserData.getEmbedJsonFromThreadId(id)!)
 				.map(async (embed) => {
-					const members = await ForumManager.getChoseMemberFormField(
+					const members = await ForumHandler.getChoseMemberFormField(
 						embed.fields,
 					);
 

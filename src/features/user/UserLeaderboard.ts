@@ -4,7 +4,7 @@ import { injectable, singleton } from "tsyringe";
 import { injectRegister } from "../../utils/reigister";
 import { EnvManager } from "../../utils/EnvManager";
 import { Collection, Message, Snowflake } from "discord.js";
-import { ForumManager } from "../ForumManager";
+import { ForumHandler } from "../forum/ForumHandler";
 import { UserData } from "./UserData";
 import { client } from "../../main";
 
@@ -38,7 +38,7 @@ export class UserLeaderboard implements IInitializable {
 					return;
 				}
 
-				const members = await ForumManager.getChoseMemberFormField(
+				const members = await ForumHandler.getChoseMemberFormField(
 					UserData.getEmbedJsonFromThreadId(t.id)!.fields,
 				);
 

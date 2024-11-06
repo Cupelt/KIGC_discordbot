@@ -8,6 +8,7 @@ import {
 	EmbedBuilder,
 	GuildMember,
 	MessageActionRowComponentBuilder,
+	RoleSelectMenuBuilder,
 	StringSelectMenuBuilder,
 	StringSelectMenuOptionBuilder,
 	ThreadChannel,
@@ -22,23 +23,19 @@ import {
 	On,
 	SelectMenuComponent,
 } from "discordx";
-import { IInitializable } from "../@types/initializable";
-import { EnvManager } from "../utils/EnvManager";
+import { IInitializable } from "../../@types/initializable";
+import { EnvManager } from "../../utils/EnvManager";
 import { container, injectable } from "tsyringe";
-import { injectRegister } from "../utils/reigister";
+import { injectRegister } from "../../utils/reigister";
 
 @Discord()
 @injectable()
 @injectRegister("IInitializable")
-export class ForumManager implements IInitializable {
+export class ForumHandler implements IInitializable {
 	private envManager: EnvManager;
-
-	// <tagId, roleId>
-	private roleMap: Map<string, string>;
 
 	constructor(envManager: EnvManager) {
 		this.envManager = envManager;
-		this.roleMap = new Map();
 	}
 	public priority: number = 0;
 
@@ -66,7 +63,7 @@ export class ForumManager implements IInitializable {
 		const msg = (await thread.messages.fetchPinned()).first();
 		if (!msg) return;
 
-		const choseMember = await ForumManager.getChoseMemberFormField(
+		const choseMember = await ForumHandler.getChoseMemberFormField(
 			msg.embeds[0].fields.slice(),
 		);
 		await msg.edit(this.getEvalMsg(choseMember, arcnived));
@@ -112,7 +109,7 @@ export class ForumManager implements IInitializable {
 		if (channel?.isThread()) {
 			const wasArchived = channel.archived ?? false;
 			const evalMsg = this.getEvalMsg(
-				await ForumManager.getChoseMemberFormField(
+				await ForumHandler.getChoseMemberFormField(
 					interaction.message.embeds[0].fields,
 				),
 				!wasArchived,
@@ -150,7 +147,6 @@ export class ForumManager implements IInitializable {
 			),
 		);
 	}
-
 	private getEvalMsg(
 		users: GuildMember[],
 		archived: boolean,
@@ -208,28 +204,6 @@ export class ForumManager implements IInitializable {
 		return {
 			embeds: [embed],
 			components: components,
-		};
-	}
-
-	private getConfigMsg(): BaseMessageOptions {
-		const userSelComp = new StringSelectMenuBuilder()
-			.setCustomId("set_tagmap")
-			.setPlaceholder("매치시킬 태그와 역할.")
-			.addOptions(
-				this.envManager
-					.getForumChannel()
-					.availableTags.filter((tag) => !tag.moderated)
-					.map((tag) =>
-						new StringSelectMenuOptionBuilder()
-							.setLabel(tag.name)
-							.setValue(tag.id),
-					),
-			)
-			.setMinValues(1)
-			.setMaxValues(1);
-
-		return {
-			content: "test",
 		};
 	}
 }
