@@ -48,6 +48,7 @@ export class UserLeaderboard implements IInitializable {
 			}),
 		);
 
+		// debug only
 		console.log(
 			await Promise.all(
 				this.userLeaderboard.map(async (id) => {

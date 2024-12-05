@@ -27,6 +27,7 @@ import { IInitializable } from "../../@types/initializable";
 import { EnvManager } from "../../utils/EnvManager";
 import { container, injectable } from "tsyringe";
 import { injectRegister } from "../../utils/reigister";
+import { ForumManager } from "./ForumManager";
 
 @Discord()
 @injectable()
@@ -49,7 +50,7 @@ export class ForumHandler implements IInitializable {
 			initMessage.pin();
 		}
 
-		await initMessage.edit(this.getConfigMsg());
+		await initMessage.edit(ForumManager.getConfigMsg());
 		await this.envManager.getForumChannel().threads.fetchArchived();
 
 		const fetched = await this.envManager.getForumChannel().threads.fetch();
